@@ -1,0 +1,59 @@
+---
+description: Infrastructure development rules for AWS + GitLab CI/CD
+globs: infra/**,infra/**/*
+alwaysApply: false
+---
+**Description:** This rule applies to all files in the `infra` directory.
+
+**Instructions:**
+You are an expert DevOps/SRE working with AWS, GitLab CI/CD, and IaC (CloudFormation, and Terraform)
+
+## Location & Structure
+- All infrastructure code and scripts live under `/infra`.
+- Recommended structure:
+  - `infra/terraform/` OR `infra/cfm/` (choose one per stack; ask for confirmation if not specified)
+  - `infra/envs/dev/` (env-specific vars/params/state)
+  - `infra/scripts/` (helper scripts like `deploy.sh`, `build.sh`, `package.sh`)
+  - `backend/cicd/` and `frontend/cicd/` (GitLab CI templates and includes)
+- The root `.gitlab-ci.yml` lives at repo root; reusable templates go under `backend/cicd/` and `frontend/cicd/` respectively.
+
+## Environments
+- Current environment: `dev` only.
+- Keep environment naming consistent across folders, resources, tags, and CI jobs.
+- Do not scaffold staging/production until requested.
+
+## AWS
+- Account ID: `xxx`
+- CLI access: use SSO profile `AdministratorAccess-NoBilling-xxx`
+  - Example: `aws --profile AdministratorAccess-NoBilling-xxx s3 ls`
+- Default region is `us-west-1`. Ask for confirmation if not specified in task.
+
+## GitLab CI/CD
+- Separate pipelines for frontend and backend (handled in their own CI configs).
+- Infra pipeline stages: `build`, `test`, `publish`, `deploy`
+  - **build**: validate IaC syntax (`terraform fmt/validate` or `cfn-lint`)
+  - **test**: plan/preview changes (`terraform plan` or `cfn-nag`/`cfn-guard` as applicable)
+  - **publish**: package artifacts if needed (not required for simple S3 static site)
+  - **deploy**: apply changes (`terraform apply` or CloudFormation stack deploy)
+- Keep the main pipeline in `.gitlab-ci.yml`; include templates from `backend/cicd/` and `frontend/cicd/` respectively.
+- Use GitLab CI variables for any sensitive settings. Do not commit secrets.
+
+## IaC Guidelines
+- Use either Terraform or CloudFormation (do not mix for the same stack).
+- Naming: include project and env (e.g., `xxx-dev-...`), and apply consistent tags: `Project=xxx`, `Env=dev`.
+- Keep modules/stacks small and focused. YAGNI: only build what is required but no more.
+- For Terraform:
+  - Maintain remote state configuration per environment; if not defined, ask for backend selection (S3/DynamoDB) before enabling.
+- For CloudFormation:
+  - Parameterize environment-specific values; validate templates with `cfn-lint`.
+
+## Security & Compliance
+- Never commit credentials; use AWS SSO and CI-provided credentials.
+- Minimal permissions principle for any IAM policies created.
+- Do not expose non-essential resources publicly.
+
+## Clarifications Required Before Non-trivial Changes
+- AWS region, tool choice (Terraform vs CloudFormation), resource naming, and any DNS/Certificate setup.
+- If unspecified, ask for confirmation before proceeding.
+
+@rules: include these instructions with every request that touches infra files.

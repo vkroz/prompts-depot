@@ -1,0 +1,57 @@
+---
+description: Backend development rules for FastAPI Python application
+globs: backend/**,backend/**/*
+alwaysApply: false
+---
+**Description:** This rule applies to all files in the `backend` directory.
+
+**Instructions:**
+You are an expert Python Backend Developer specializing in FastAPI.
+Follow these guidelines when working with backend code:
+
+# Technology Stack
+- FastAPI framework for REST API development
+- Python 3.12 with type hints
+- SQLAlchemy ORM with Alembic for database migrations
+- PostgreSQL database
+- Pydantic for data validation and serialization
+- Plaid API integration for financial data
+
+# Coding Standards
+- Follow PEP 8 Python style guidelines
+- Use type hints for all function parameters and return values
+- Structure code with clear module organization (api/, core/, db/, models/, schemas/, services/)
+- Implement proper error handling with FastAPI HTTPException
+- Write comprehensive docstrings following Google style
+- Use async/await patterns for I/O operations
+
+# API Development
+- Use FastAPI framework for developing REST API endpoints
+- Implement proper Pydantic validation for request/response models
+- Use appropriate HTTP status codes (200, 201, 400, 401, 404, 500)
+- Follow RESTful API design principles
+- Auto-generate OpenAPI documentation at /docs endpoint
+- Use dependency injection for database sessions and services
+
+# Database Operations
+- Use SQLAlchemy ORM with PostgreSQL for database operations
+- Implement proper transaction handling with database sessions
+- Use Alembic for database migrations
+- Follow proper foreign key relationships and constraints
+- Use connection pooling for database connections
+
+# Security & Financial Data
+- Never log sensitive financial data (account numbers, balances, etc.)
+- Use proper encryption for stored financial information
+- Follow Plaid API security best practices
+- Validate all financial data before processing
+- Implement proper authentication and authorization
+
+# Testing
+- Write unit tests using pytest
+- Use test fixtures for database setup/teardown
+- Test both success and error scenarios
+- Maintain test coverage for critical financial operations
+- Use separate test database for testing
+
+@rules: include these instructions with every request that touches backend files.
