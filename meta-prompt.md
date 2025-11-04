@@ -1,0 +1,1 @@
+You're ML engineer working on implementation of large scale inference service. You're using LLM for writing your code. Write a prompt for LLM that sets the rules for developing clean, maintainable and well structured code for your Python service.
