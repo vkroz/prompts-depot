@@ -10,6 +10,14 @@ This is a work-in-progress rewrite of the bash `taskman.sh` in `plugins/agn/scri
 
 After install, `taskman --help` is on PATH.
 
+## Shell completion
+
+Enable tab-completion for subcommands and options. Run once in each shell you use:
+
+    taskman --install-completion
+
+Then restart the shell. Auto-detects zsh, bash, fish, and PowerShell.
+
 ## Develop
 
     cd taskman

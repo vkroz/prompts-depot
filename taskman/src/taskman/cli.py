@@ -32,7 +32,6 @@ app = typer.Typer(
     name="taskman",
     help="Uniform recursive work-item management.",
     no_args_is_help=True,
-    add_completion=False,
 )
 
 
@@ -52,20 +51,21 @@ def version() -> None:
 # Register subcommands from the commands package.
 app.command("new")(_new)
 app.command("finalize")(_finalize)
-app.command("move")(_move)
-app.command("convert")(_convert)
 app.command("list")(_list)
 app.command("show")(_show)
+app.command("dependents")(_dependents)
+app.command("move")(_move)
 app.command("close")(_close)
 app.command("validate")(_validate)
-app.command("help")(_help)
-app.command("migrate")(_migrate)
 app.command("ready")(_ready)
-app.command("dependents")(_dependents)
 app.command("waiting-on")(_waiting_on)
 app.command("search")(_search)
 app.command("worktree-status")(_worktree_status)
 app.command("ui")(_ui)
+app.command("help")(_help)
+# --- auxiliary or temporary commands ---
+app.command("convert")(_convert)
+app.command("migrate")(_migrate)
 
 
 def main() -> None:
