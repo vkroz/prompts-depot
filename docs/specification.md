@@ -10,179 +10,57 @@
 
 ### SDLC model
 
-agn's SDLC is a **recursive decomposition** pattern. Each tier (product → epic → feature → task) runs the same six phases at a different level of abstraction:
+agn's SDLC is a **recursive decomposition** pattern. Each tier (product → epic → feature → task) runs the same five stages at a different level of abstraction, with a user gate between stages:
 
 ```
-Requirements → Spec → Design → Plan → Implementation → Validation
-                                          ↓
-                                  (recurses to next tier)
+define → design → plan → implement → validate
 ```
 
-Tier-specific notes:
-- **Product:** no direct implementation. Implementation expands to a portfolio of epics over time.
-- **Epic:** Design = high-level. Plan produces features or tasks. Validation = integration / system test at epic boundary.
-- **Feature:** Design = detailed. Plan produces tasks. Optional tier — skip if 2-3 tasks suffice.
-- **Task:** Design is mostly cross-check against upstream. If gaps surface, halt and escalate — gaps signal insufficient upstream design.
+Decomposition recurses: a stage at one tier produces the work items that are detailed one tier down.
+
+Each stage owns one responsibility — and one thing it must not do:
+
+| Stage | Owns | Produces | Does NOT do |
+|---|---|---|---|
+| **Define** | WHAT and WHY: problem, objective, scope, acceptance criteria | Unit body (or product docs) | Solution shape; decomposition |
+| **Design** | HOW-shape: solution structure, technology choices, contracts | Architecture (product); design delta (epic, feature) | Implementation detail; child work items |
+| **Plan** | Decomposition and ordering | Child work items + ordered list in the parent unit | Body revision; design decisions |
+| **Implement** | Execution | Code, artifacts, detailed design (task level) | Independent verification |
+| **Validate** | Independent verification against spec | QA report, verdict | Redesign; fixes beyond glue-level |
+
+**Stage boundaries:**
+
+- **Define stops at WHAT.** If the dialog drifts into how to build it, Define records the question and moves on — the answer belongs to Design or Implement.
+- **Design stops at shape.** Function-level design, schemas, and signatures belong to Implement (task level, inline).
+- **Plan owns all decomposition.** Define never creates child units. Epic → features and feature → tasks happen in Plan; product → top-level work items happens in Plan at product level.
+- **Implement owns its exit check.** A task's `## Quality gates` run as Implement's exit criterion — a task does not move to `done` with failing gates. This is builder self-verification, not QA.
+- **Validate runs fresh-context at feature level and above.** The QA sub-agent (`rules/qa.md`) sees spec + result only. Task-level validate is lightweight — it runs the task's own `## Quality gates` in the main session, not a fresh-context QA pass.
+
+Every stage skill is **mode-aware**: it composes on the first pass and refines in place on later invocations. Creating and revising are the same stage, not different verbs.
+
+#### Stage × level matrix
+
+Which stage produces what artifact at which level:
+
+| Level | Define | Design | Plan | Implement | Validate |
+|---|---|---|---|---|---|
+| **Product** | `docs/vision.md`, `docs/spec.md`, `docs/requirements.md` | `docs/architecture.md` | Ordered set of top-level work items under `tasks/` — epics by default; tier per item by effort estimate | — (via work items) | `/agn:validate product` |
+| **Epic** | Epic body: problem, objective, scope, acceptance criteria | Design delta — required by default | `## Linked features` list + feature files | — (via features) | `/agn:validate epic` |
+| **Feature** | Feature body: problem, objective, acceptance criteria | Design delta — optional; skip requires recorded rationale | `## Tasks` list + task files | — (via tasks) | `/agn:validate feature` |
+| **Task** | Task body: problem, scope, acceptance criteria, quality gates; design decisions inline | Folded into Define | None — the task is the plan | Execution: code, artifacts | `/agn:validate task` (lightweight gates) |
+
+Per-level notes:
+
+- **Product.** Define, Design, and Plan always run, in order, each behind a user gate. The product plan has no artifact of its own — the ordered set of work-item files is the plan. Plan produces top-level work items, epics by default; for each, pick the smallest tier that fits the estimated effort. Product has no direct implementation; it expands into its epics over time.
+- **Epic.** Design and Plan are separate, gated stages. Define produces the epic body only — decomposition into features belongs to Plan. Validate is integration / system test at the epic boundary.
+- **Feature.** Design runs when complexity warrants it. Skipping is a recorded decision (`Design: not needed — <reason>`), not an omission. Plan (task decomposition) always runs.
+- **Task.** Define and Design combine — design decisions are documented inline in the task body. A task-level decision that contradicts or extends the parent feature's design escalates via the gap protocol (`tasks/gaps/`); it is not resolved in the task.
 
 Documentation evolves continuously. Each completed unit triggers automatic review of upstream artifacts (architecture, spec, requirements) for drift.
 
-#### New product development
-
-- **Definition (Requirements + Spec)**
-    - **Objective**: establish vision document, product specification, and requirements documents that will be used in subsequent stages of SDLC.
-    - **Inputs**:
-        - Product owner's vision and requirements.
-        - Any other available sources of information (e.g., similar product available online, or online documentation).
-    - **Outputs**:
-        - Vision document (`docs/vision.md`) — one-pager that captures the problem this product solves, key functional capabilities, how it solves the user problem, and answers "So what?".
-        - Product specification (`docs/spec.md`) — detailed document describing product functionality, user flows, and user interactions. Focuses on overall UX, functionality, and flows.
-        - Requirements (`docs/requirements.md`) — addendum to spec. Goes in depth for specific areas that may not be fully detailed in spec. More formal description that complements the spec.
-    - **How it is done**:
-        1. The agent composes an initial draft of the vision document collaboratively with the product owner.
-        2. The agent drafts the specification using the vision and any other available sources. Product owner reviews and iterates.
-        3. The agent drafts requirements that disambiguate the spec. Product owner reviews and iterates. Updates flow back to vision and spec as needed.
-        4. Output validation: agent reviews outputs against two rubrics and produces a report. Product owner addresses findings. Cycle repeats until critical issues are cleared or the user moves on.
-            - **Business case**: do we understand the business and user problem? Does the spec solve it? Is there a better way? Is the monetization case sound? Are risks addressed?
-            - **Functional completeness**: is the functionality consistent across all documents? Any gaps, ambiguities, inconsistencies, or missing details? Sufficient detail for the next stage?
-
-- **Design (High-level architecture)**
-    - **Objective**: establish high-level architecture that serves as input for the Plan phase and for detailed design during implementation. Sets high-level technical direction — choice of technologies, software architecture and system design, domain dictionary (key elements only, no detailed schemas), workflows, key APIs, security mechanisms. Detailed APIs, schemas, function names are explicitly out of scope — they emerge during implementation.
-    - **Inputs**: vision, specification, requirements.
-    - **Outputs**: `docs/architecture.md`.
-    - **How it is done**:
-        - Agent drafts the architecture document. Product owner reviews and iterates.
-        - QA: the agent reviews the architecture for incomplete or inconsistent design, over-engineering, under-engineering, violations of core design principles, ambiguities, missing details, or unaddressed requirements. Findings go into a report; product owner provides answers; agent updates. Cycle repeats until critical issues are cleared.
-        - Doc consistency: before moving to Plan, agent checks whether specs or requirements need updating (e.g., a feature deferred due to cost). Updates all affected documents to keep them consistent.
-        - Final user review and approval.
-
-- **Plan (Decomposition)**
-
-    - **Objective**: decompose the product into a four-tier hierarchy — **product → epic → feature → task** — that gives implementation agents executable units of work and the user a clear view of scope and sequencing. Epics are functional-block-sized initiatives. Features are coherent slices within an epic (or stand-alone if no epic tier is needed). Tasks are the units of implementation work. Each tier is optional one level up. See `rules/task-composition.md` for the body and frontmatter shape of each tier; see `./scripts/taskman.sh help` for the persistence model (storage, naming, lifecycle).
-    - **Inputs**: specs, requirements, architecture.
-    - **Outputs**: epic files (`tasks/epics/`), feature files (`tasks/features/`), task files (`tasks/backlog/`). The hierarchy is the plan — there is no separate implementation-plan document.
-    - **How it is done**:
-        - The agent decomposes the product collaboratively with the user, choosing the appropriate tier for each unit of work. Large functional blocks become epics with linked features. Smaller initiatives become features directly with linked tasks. One-off work becomes ad-hoc tasks.
-        - QA validation: the agent reviews each artifact to find issues that could cause problems during implementation — incomplete or ambiguous task definitions, over-engineering, inconsistencies, missing coverage of functionality outlined in the vision and specs. A key cross-check at this stage is that each task provides sufficient non-ambiguous detail for an implementation agent to proceed with detailed design and coding — this is the last gate before handing work to automated agents.
-        - Feedback to prior stages: if decomposition surfaces a need to change specs or requirements, the agent updates the relevant definition documents alongside the decomposition artifacts to keep all artifacts consistent.
-        - The user reviews and approves the decomposition before implementation begins.
-
-- **Implementation**
-    - **Objective**: execute the plan by completing tasks in the order defined by the hierarchy, producing working, tested, and documented code. The user controls execution granularity — single task, a feature, an epic, or the full product. Each task goes through a design cross-check before coding begins to confirm the upstream design covers it. The stage is largely autonomous — agents work independently and escalate to the product owner when upstream design gaps are surfaced.
-    - **Inputs**: hierarchy (epics, features, tasks), architecture, specs, requirements.
-    - **Outputs**: working codebase, per-task detailed design notes (where appropriate), per-feature integration test results, and updated artifacts reflecting any decisions made during implementation.
-    - **How it is done**:
-        - The agent processes tasks in the order defined by the plan, respecting feature and epic boundaries.
-        - For each task, the agent first cross-checks the upstream design against the task. If the design is complete, it proceeds with code + unit tests. If gaps are detected, it halts (see Escalation protocol below).
-        - **Escalation protocol**: when the cross-check reveals a missing or ambiguous design decision, the implement skill halts, writes a durable gap-log entry (description, suspected upstream level, implementation context), and surfaces routing instructions to the user (`"Run /agn:design <level> to address before continuing."`). The user manually re-invokes the upstream skill. After upstream is updated, the user re-invokes `/agn:implement task`, which re-reads the task body to pick up the revised design.
-        - The agent writes unit tests and verifies that the implementation passes all relevant tests without breaking existing functionality.
-        - Doc consistency: implementation discoveries that require updates to specs, requirements, or architecture trigger updates to those documents to keep all artifacts consistent.
-        - **Integration test (per feature)**: when all tasks in a feature are complete, the QA sub-agent runs integration tests against the live application. The integration test validates: (1) all functional requirements delivered by this feature work end-to-end, and (2) functionality from previous features continues to work — no regressions. Issues found are fixed before proceeding. The product owner reviews phase output and approves progression.
-        - The stage concludes when all features are complete, all integration tests pass, and the product owner approves the implementation as ready for system testing.
-
-- **Validation (System Test)**
-    - **Objective**: full system test once the implementation scope is complete. Integration tests during Implementation validate each feature in isolation; this stage tests the product as a whole — all features work together, all functional and non-functional requirements are met, the product is ready for release.
-    - **Inputs**: fully implemented codebase, specs, requirements, integration test results.
-    - **Outputs**: system test report; verified, release-ready codebase with all critical issues resolved.
-    - **How it is done**:
-        - The QA sub-agent reviews the full codebase against specs and requirements, checking that all specified functionality is present, behaves correctly end-to-end, and handles edge cases appropriately.
-        - QA runs the full test suite, identifies coverage gaps in critical paths, and adds missing tests.
-        - QA validates end-to-end user flows as specified.
-        - Findings are categorized by severity (critical, major, minor) in a system test report. Critical and major issues are resolved before release. Issues requiring product owner decisions are escalated.
-        - Affected areas are re-tested after fixes. Cycle repeats until critical and major issues are cleared.
-        - Product owner reviews the final report and approves the product as ready for release.
-
-#### Bug fixes
-
-Bug fixes apply to an existing product where all definition documents and architecture are present in `docs/`. The workflow is streamlined — Definition and Design (Architecture) are skipped, and the process begins from a defect task.
-
-- **Defect task (input)**
-    - **Objective**: capture a well-defined, actionable description of the bug so the agent has everything it needs to investigate and fix it without ambiguity.
-    - **How it is done**: the user creates a task of kind `bug` in `tasks/backlog/` containing: observed problem, expected result, actual result, reproduction steps, environment context, logs, screenshots. The task serves as the primary input for all subsequent stages.
-
-- **Plan (fix planning)**
-    - **Objective**: understand the root cause and produce a targeted fix plan without touching architecture unless absolutely necessary.
-    - **Inputs**: defect task, existing docs, codebase.
-    - **Outputs**: root cause analysis note and a fix plan — a concise set of tasks describing exactly what needs to change.
-    - **How it is done**:
-        - The agent investigates the codebase to identify the root cause, tracing through relevant components, data flows, and logic.
-        - The agent produces a root cause analysis and a fix plan added to the defect task or as a linked task set.
-        - **Architecture impact check**: if the root cause reveals that fixing the defect requires an architectural change, the agent must stop, document the architectural impact clearly, and enter interactive discussion with the user. No fix work begins until the user explicitly approves the approach.
-        - For straightforward bugs with no architectural impact, the agent proceeds to implementation after the fix plan is drafted.
-
-- **Implementation**
-    - **Objective**: apply the fix as defined in the fix plan.
-    - **How it is done**: same as in new product development. Detailed design first, then code, then unit tests. If the fix reveals that specs, requirements, or architecture need minor updates, the agent updates those documents to keep all artifacts consistent. Scope creep is flagged and not pursued without user instruction.
-
-- **Validation (integration + system test)**
-    - **How it is done**: the QA sub-agent runs an integration test against the live application validating (1) the defect is resolved and the expected behavior is now observed, and (2) functionality related to or touched by the fix continues to work. Then QA runs the full system test for regression. Any regressions are fixed and re-tested. QA produces a brief report. Product owner reviews and approves the fix as ready for release.
-
-#### Maintenance
-
-Maintenance covers ongoing work on an existing product that does not introduce new user-facing features. Two scenarios:
-
-**Scenario 1: Ad-hoc maintenance tasks**
-
-The user identifies a specific maintenance need — refactoring a module, migrating a database, upgrading a dependency, improving test coverage — and initiates it through the standard task workflow.
-
-- **How it is done**:
-    - The user creates a task in `tasks/backlog/` with a clear problem statement, scope, and acceptance criteria. The task type reflects the nature of the work (`task`, `bug`, `refactor`, `upgrade`, `chore`).
-    - The agent picks up the task and executes it following the same Implementation process. Architecture impact check applies — if the task requires architectural changes, the agent flags this and discusses with the user before proceeding.
-    - Integration and regression tests run after the task is complete. Same process as in bug fixes.
-    - The user approves the task as done once all quality gates pass.
-
-**Scenario 2: Codebase optimization**
-
-Over time, as agents implement individual tasks with narrow focus, the codebase can become fragmented — locally optimized per task but globally degraded in quality, consistency, and structure. Codebase optimization is a periodic process where the agent audits the full codebase and proposes a holistic improvement plan.
-
-- **How it is done**:
-    - **Audit (agent-driven)**: `/agn:code-review` produces a report identifying technical debt, fragmentation, inconsistency, duplication, over-complexity, performance issues, or deviations from architecture. This replaces the user-driven Definition stage — the agent surfaces the problems. Findings go to the product owner for review and prioritization.
-    - **Design**: if the optimization plan requires structural changes, the agent produces or updates the architecture document to reflect the target state. The product owner reviews and approves before planning begins.
-    - **Plan**: the agent translates the approved optimization plan into a set of tasks via `/agn:define epic` or `/agn:define feature`. Same process as in new product development.
-    - **Implementation, Integration test, Validation**: same process as new product development.
-
-#### Incremental features to an existing product
-
-Same overall workflow as new product development, with one difference: Definition, Design, and Plan stages operate on existing artifacts rather than starting from scratch.
-
-- **Definition**: agent drafts additions and amendments to the existing vision, spec, and requirements to cover the new feature. Output validation follows the same rubric. After this stage the existing docs fully describe the product including the new feature — no separate "feature docs."
-- **Design**: agent reviews the existing architecture and decides whether the new feature can be implemented within it or whether changes are needed. If no changes are needed, lightweight — agent documents the assessment and proceeds.
-- **Plan**: same process as new product development. The agent identifies which existing components are touched by the new feature so those areas are explicitly covered in the plan and in testing scope.
-- **Implementation, Integration test, Validation**: same as new product development. Scope discipline applies — the agent does not modify functionality outside the approved feature scope without explicit user instruction.
-
-
 ## Current Implementation State
 
-`agn` is packaged as a Claude Code plugin (plugin name: `agn`) in the `agenture` marketplace. Users install it via `/plugin install agn@agenture`.
-
-### What ships today
-
-- **Lifecycle skills** under the verb-noun pattern (`/agn:<verb> <level>`):
-  - `/agn:define <product|epic|feature|task>` — define a work unit at the named tier. For epic/feature/task levels, composition delegates to the Planner sub-agent.
-  - `/agn:design <product|epic|feature>` — focused revision of an existing unit's design. Product drafts `docs/architecture.md` in the parent session; epic and feature delegate to the Planner in refine mode.
-  - `/agn:plan <epic|feature>` — focused revision of an existing unit's decomposition. Delegates to the Planner in refine + plan-only mode.
-  - `/agn:implement <task|feature|epic>` — execute implementation; task = detailed design → code → tests; feature/epic = iterate children.
-  - `/agn:validate <task|feature|epic|product>` — quality gates. Task runs the task's own `## Quality gates` in the main session; feature, epic, and product delegate to the QA sub-agent for fresh-context validation against spec.
-- **Tool skills:** `/agn:code-review`, `/agn:code-comment`, `/agn:code-commit`, `/agn:docs-sync`.
-- **Sub-agents:**
-  - `planner` (`plugins/agn/agents/planner.md`) — level-aware Design + Plan composer used by define / design / plan skills. Read-only tools; returns text for the parent to persist via `taskman.sh`.
-  - `qa` (`plugins/agn/agents/qa.md`) — fresh-context validator used by `/agn:validate feature|epic|product`. Loads `rules/qa.md`; returns verdict + structured report.
-- **PostClose hook:** `taskman.sh` appends to `tasks/docs-sync-queue.txt` on every close action; `/agn:docs-sync` processes the queue against `rules/doc-maintenance.md`.
-- **Rules** in `rules/first-principles.md` (always-on design discipline), `rules/task-composition.md` (frontmatter and body shapes), `rules/writing-guideline.md` (prose style), `rules/qa.md` (validation principles), `rules/doc-maintenance.md` (closure-time doc checks). Loaded into a user's project by `@`-importing them in the project's `CLAUDE.md`. Persistence rules live in `./scripts/taskman.sh help`.
-- **Tooling:** `scripts/taskman.sh` — single writer for create / move / close / list operations on epics, features, and tasks.
-
-### Rework complete
-
-Epic `agentic_sdlc_rework` (see `tasks/epics/`) has delivered all six linked features. The plugin now matches this specification's recursive SDLC:
-
-- `unified_skills_and_cleanup` — verb-noun surface live; abandoned fossils from the prior agent design removed.
-- `rules_split_and_new_files` — composition in `rules/task-composition.md`; persistence in `taskman.sh help`; role-specific rule files `rules/qa.md` and `rules/doc-maintenance.md` authored; rule import blocks updated.
-- `planner_subagent` — Planner sub-agent ships at `plugins/agn/agents/planner.md`; `/agn:define`, `/agn:design`, `/agn:plan` delegate composition to it.
-- `task_escalation_protocol` — `/agn:implement task` halts on detected design gaps, writes a gap-log entry to `tasks/gaps/`, prints a routing message, and supports resume after upstream is updated.
-- `qa_subagent_and_validation` — QA sub-agent ships at `plugins/agn/agents/qa.md`; `/agn:validate task` runs lightweight gates in main session; `/agn:validate feature|epic|product` delegate to QA for fresh-context validation against spec.
-- `docsync_close_hook` — `taskman.sh` close actions append to `tasks/docs-sync-queue.txt`; `/agn:docs-sync` processes the queue, walks the dependency chain (vision → spec → requirements → architecture → linked spec) per `rules/doc-maintenance.md`, proposes diffs, applies after user approval, and clears processed entries.
-
-The remainder of this document describes the **current** state of the plugin.
-
+`agn` ships as a Claude Code plugin (`agn`) in the `agenture` marketplace; install via `/plugin install agn@agenture`. It implements this specification in full. For the shipped-component inventory see `CLAUDE.md`; for the user-facing skill reference see `README.md`. Component contracts are specified under **Plugin Specification** below.
 
 # Specification and Requirements
 
