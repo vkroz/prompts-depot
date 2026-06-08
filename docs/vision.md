@@ -1,30 +1,5 @@
 # Agenture - Vision
 
-## Agenture - Vision
- 
-Skills, plugins, tools and agents for AI-assisted SDLC. 
-
-Topics covered
-- discovery and requirements
-- specations
-- analysis and design
-- planning 
-- implementation
-- QA
-- DevOps
-
-For discovery and planning phase: `defmod` 
-For projects and tasks management: `taskman`
-For agentic SDLC: `agenture-loop`
-For QA: ...TK...
-For autonomuos execution: `musterkit` - coordinationation and orchestration agent. Shared memory and context management
-
-
-
-
-
-========= STOP READING HERE ============
-
 ## Objective
 
 Accelerate the software development lifecycle (SDLC) through adoption of AI coding tools and automation. Transition software teams from ad-hoc AI use to repeatable, validated, and measurable AI-assisted development.
